@@ -1,77 +1,133 @@
-import sounddevice as sd
-from vosk import Model, KaldiRecognizer
-import json
-from word2number import w2n
-import random
+import customtkinter
 
-pathModel = "enter vosk model path"
-model = Model(pathModel)
-recognizer = KaldiRecognizer(model, 16000)
+from modules.colours import Mocha
+from modules.vocal_math import VocalMath
 
-def word2num(text):
-    try:
-        return w2n.word_to_num(text)
-    except ValueError:
-        return None
+FONT = "Source Code Pro"
 
-def ifMinus(expression):
-    words = expression.split()
-    if words[0] == "minus" and len(words) > 1:
-        try:
-            number = word2num(" ".join(words[1:]))
-            if number is not None:
-                return -number
-        except ValueError:
-            return None
-    return word2num(expression)
 
-def recognizeSpeech():
-    with sd.InputStream(samplerate=16000, channels=1, dtype='int16') as stream:
-        while True:
-            data, _ = stream.read(2048)
-            if recognizer.AcceptWaveform(data.tobytes()):
-                result = recognizer.Result()
-                spoken_text = json.loads(result).get('text', '')
-                print(f"Recognized Text: {spoken_text}")
-                if spoken_text:
-                    return spoken_text
-            else:
-                result = recognizer.PartialResult()
-                spoken_text = json.loads(result).get('partial', '')
-                if spoken_text:
-                    print(f"Partial Recognized Text: {spoken_text}")
+class App(customtkinter.CTk):
+    def __init__(self, vocal_math: VocalMath, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.difficulty = 1
+        self.geometry("1000x900")
+        self.vocal_math = vocal_math
+        self.configure(fg_color=Mocha.MANTLE)
 
-def nextPuzzle():
-    num1 = random.randint(1, 100)
-    num2 = random.randint(1, 100)
-    operator = random.choice(['+', '-'])
-    
-    if operator == '+':
-        return num1, num2, num1 + num2, f"What is {num1} + {num2}?"
-    elif operator == '-':
-        return num1, num2, num1 - num2, f"What is {num1} - {num2}?"
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(1, weight=4)
 
-def main():
-    while True:
-        num1, num2, current_answer, puzzle = nextPuzzle()
-        print(puzzle)
-        
-        while True:
-            recognized_text = recognizeSpeech()
-            if not recognized_text:
-                print("No speech recognized. Please try again.")
-                continue
+        NameFrame(self).grid(
+            row=0, column=0, padx=20, pady=20, sticky="nsew", columnspan=2
+        )
 
-            processed_number = ifMinus(recognized_text)
-            if processed_number is not None:
-                print(f"Processed Expression: {processed_number}")
-                if processed_number == current_answer:
-                    print("Correct! Showing next puzzle.")
-                    break
-                else:
-                    print(f"Incorrect. The expected answer was {current_answer}. Please try again.")
-            else:
-                print("Could not recognize or process the expression. Please try again.")
+        self.image_frame = ImageFrame(self)
+        self.image_frame.grid(
+            row=1, column=0, padx=20, pady=20, sticky="nsew", columnspan=2
+        )
+
+        StartGameButton(self).grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
+        DifficultyFrame(self).grid(row=2, column=1, padx=20, pady=20, sticky="nsew")
+
+    def start_game(self) -> None:
+        expression = self.vocal_math.new_expression(self.difficulty)
+        self.image_frame.label.configure(text=expression)
+
+    def set_difficulty(self, difficulty: int) -> None:
+        self.difficulty = difficulty
+
+
+class NameFrame(customtkinter.CTkFrame):
+    def __init__(self, master, **kwargs) -> None:
+        super().__init__(master, **kwargs)
+        self.configure(fg_color=Mocha.BASE)
+
+        self.label = customtkinter.CTkLabel(
+            self,
+            font=("Gloria Hallelujah", 76),
+            text="Math Echo Blitz",
+            text_color=Mocha.LAVENDER,
+        )
+        self.label.pack()
+
+
+class ImageFrame(customtkinter.CTkFrame):
+    def __init__(self, master, **kwargs) -> None:
+        super().__init__(master, **kwargs)
+        self.configure(fg_color=Mocha.BASE)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        self.label = customtkinter.CTkLabel(
+            self, text="", font=("Gloria Hallelujah", 128), text_color=Mocha.GREEN
+        )
+        self.label.grid(row=0, column=0, sticky="nsew")
+
+
+class StartGameButton(customtkinter.CTkButton):
+    def __init__(self, master, **kwargs) -> None:
+        super().__init__(master, **kwargs)
+        self.configure(
+            text="Start Game",
+            font=(FONT, 48),
+            command=master.start_game,
+            fg_color=Mocha.BASE,
+            text_color=Mocha.LAVENDER,
+            border_color=Mocha.LAVENDER,
+            border_width=3,
+            hover_color=Mocha.MANTLE,
+        )
+
+
+class DifficultyFrame(customtkinter.CTkFrame):
+    def __init__(self, master, **kwargs) -> None:
+        super().__init__(master, **kwargs)
+        self.master: App = master
+        self.configure(fg_color=Mocha.BASE)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
+
+        self.label = customtkinter.CTkLabel(
+            self,
+            text="Difficulty Level",
+            font=(FONT, 36),
+            text_color=Mocha.LAVENDER,
+        )
+        self.label.grid(row=0, column=0, padx=20, pady=20, sticky="nsew", columnspan=3)
+
+        self.difficulty = customtkinter.IntVar(value=0)
+        easy = customtkinter.CTkRadioButton(
+            self,
+            text="Easy",
+            variable=self.difficulty,
+            value=1,
+            command=self.radio_button_event,
+        )
+        medium = customtkinter.CTkRadioButton(
+            self,
+            text="Medium",
+            variable=self.difficulty,
+            value=2,
+            command=self.radio_button_event,
+        )
+        hard = customtkinter.CTkRadioButton(
+            self,
+            text="Hard",
+            variable=self.difficulty,
+            value=3,
+            command=self.radio_button_event,
+        )
+
+        easy.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+        medium.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
+        hard.grid(row=1, column=2, padx=20, pady=20, sticky="nsew")
+
+    def radio_button_event(self) -> None:
+        self.master.set_difficulty(self.difficulty.get())
+
 
 if __name__ == "__main__":
-    main()
+    app = App(VocalMath(r"assets/vosk-model-en-in-0.5"))
+    app.mainloop()

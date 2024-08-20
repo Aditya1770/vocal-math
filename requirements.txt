@@ -1,4 +1,6 @@
-sounddevice==0.4.6
 vosk==0.3.45
+numpy==1.26.4
+pillow~=10.4.0
 word2number==1.1
-numpy==1.25.2
+sounddevice==0.4.6
+customtkinter~=5.2.2
