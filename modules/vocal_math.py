@@ -1,25 +1,15 @@
 import json
 import random
-import os
 from math import sqrt
 from random import randint
 from typing import Union
 
 import sounddevice as sound_device
+import vlc
+from gtts import gTTS
 from vosk import Model, KaldiRecognizer
 from word2number import w2n
 
-from gtts import gTTS
-import playsound
-
-
-def tts(text):
-    tts = gTTS(text=text, lang='en')
-    filename = "sound.mp3"
-    tts.save(filename)
-    playsound.playsound(filename)
-    os.remove(filename)
-    
 
 def check_prime(n: int) -> bool:
     if n <= 1:
@@ -56,7 +46,11 @@ class VocalMath:
 
         if operator == "/":
             num1 = random.choice(
-                [i for i in range(2, 10**difficulty + 1) if not check_prime(i)]
+                [
+                    i
+                    for i in range(10 ** (difficulty - 1), 10**difficulty + 1)
+                    if not check_prime(i)
+                ]
             )
 
             divisors = set()
@@ -68,11 +62,13 @@ class VocalMath:
             num2 = random.choice(list(divisors))
 
         elif operator == "-":
-            num1 = randint(1, 10**difficulty)
+            num1 = randint(10 ** (difficulty - 1), 10**difficulty)
             num2 = randint(1, num1)
 
         else:
-            num1, num2 = randint(1, 10**difficulty), randint(1, 10**difficulty)
+            num1, num2 = randint(10 ** (difficulty - 1), 10**difficulty), randint(
+                10 ** (difficulty - 1), 10**difficulty
+            )
 
         self.expression = f"{num1} {operator} {num2}"
         return self.expression.replace("*", "×").replace("/", "÷")
@@ -82,7 +78,6 @@ class VocalMath:
         with sound_device.InputStream(
             samplerate=self.sample_rate, channels=self.channels, dtype="int16"
         ) as stream:
-            print("Speak now please.")
             data, _ = stream.read(frames)
 
             if self.recognizer.AcceptWaveform(data.tobytes()):
@@ -102,3 +97,9 @@ class VocalMath:
             return w2n.word_to_num(word)
         except ValueError:
             return None
+
+    @staticmethod
+    def tts(text):
+        file = r"sound.mp3"
+        gTTS(text=text.replace("-", "minus"), lang="en").save(file)
+        vlc.MediaPlayer(file).play()
