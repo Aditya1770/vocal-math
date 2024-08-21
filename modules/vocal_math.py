@@ -1,5 +1,6 @@
 import json
 import random
+import os
 from math import sqrt
 from random import randint
 from typing import Union
@@ -8,6 +9,17 @@ import sounddevice as sound_device
 from vosk import Model, KaldiRecognizer
 from word2number import w2n
 
+from gtts import gTTS
+import playsound
+
+
+def tts(text):
+    tts = gTTS(text=text, lang='en')
+    filename = "sound.mp3"
+    tts.save(filename)
+    playsound.playsound(filename)
+    os.remove(filename)
+    
 
 def check_prime(n: int) -> bool:
     if n <= 1:
